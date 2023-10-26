@@ -28,6 +28,7 @@
     1. 弧头：v
     1. 有向图：区分弧头弧尾的图
     1. 有向完全图：有n*(n-1)条边的有向图
+    1. 有向无环图（DAG图）：无环的有向图
     1. 入度/出度
     1. 强连通图：有向图中任意两个顶点双向连通
     1. 强连通分量：有向图中的极大强连通子图
@@ -384,9 +385,138 @@ int merge(int i, int j) {
     return pj;
 }
 ```
-## 拓扑排序
 
-## 关键路径
+## 有向无环图（DAG图）及其应用
+有向无环图是描述含有公共子式的表达式的有效工具。
+
+1. 偏序：若集合X上的关系R是自反的、**反对称的**和传递的，则称R是集合X上的偏序关系。（集合中仅有部分成员之间可以比较）
+1. 全序：（全体成员之间均可比较）
+1. 拓扑有序：
+1. 拓扑排序：由偏序定义得到拓扑有序的操作便是拓扑排序。由某个集合上的一个偏序得到该集合上的一个全序，这个操作称之为拓扑排序。
+1. AOV网(Activity On Vertex Network)：用顶点表示活动，用弧表示活动间的优先关系的有向图称为顶点表示活动的网。用于流程图设计、子工程之间的次序关系。
+1. AOE网(Activity On Edge Network)：用顶点表示事件，弧表示活动，权表示活动持续时间的网，带权的有向无环图。用于估算工程完成时间、哪些活动是影响工程进度的关键。
+1. 关键路径：AOE网中路径长度最长的路径。
+
+### 拓扑排序（AOV网）
+AOV网不应存在有向环，首先判定网中是否存在环：对有向图构建拓扑有序序列，若网中所有顶点都在它的拓扑有序序列中，则不存在环。
+
+拓扑排序方法：
+1. 在有向图中选一个没有前驱的顶点并输出；
+1. 从图中删除该顶点和所有以它为尾的弧;
+1. 重复上述步骤，直至全部顶点输出（有向无环图）或图中不存在无前驱的顶点（有向图中存在环）为止。
+
+时间复杂度：O(n + e)
+
+空间复杂度：O(n)，设置辅助数组indegree[]，存储顶点的入度值，入度为0表示顶点没有前驱。另设一栈，度为0的顶点入栈。
+```c
+//采用邻接表作有向图的存储结构
+int TopologicalSort(ALGraph g) {
+    int indegree[g.vex_num] = {0};
+    ArcNode *p = NULL;
+    for(int i = 0; i < g.vex_num; ++i) {    //更新各个结点的入度：O(e)
+        p = g.vexs[i].first_arc;
+        while(p) {
+            indegree[i]++;
+            p = p->next;
+        }
+    }
+    Stack s; init_stack(&s);
+    for(int i = 0; i < g.vex_num; ++i) {    //设置栈存储没有前驱的顶点:O(n)
+        if(!indegree[i]) push(&stack, i);
+    }
+
+    int i, count = 0;
+    ArcNode *del;
+    while(!empty(&stack)) { //O(e)
+        pop(&stack, &i); count++;
+        printf("%d, ", i);  //拓扑排序输出序列
+        p = g.vexs[i].first_arc;
+        while(p) {
+            if(!(--indegree[p->adjvex])){   //入度减为0
+                push(&stack, p->adjvex);
+            }
+            p = p->next;
+        }
+    }
+
+    if(count < g.vex_num) return ERROR;
+    else return OK;
+}
+```
+
+### 关键路径（AOE网）
+1. 最早开始时间ve(i)：max{前驱们的最早开始时间+弧长}
+1. 最晚开始时间vl(i)：min{后继们的最晚开始时间-弧长}
+1. 时间余量： vl(i) - ve(i)
+1. 关键活动：ve(i) = vl(i)的活动
+
+关键路径上的所有活动都是关键活动
+
+求事件最早开始时间同拓扑排序，求最晚开始时间利用vl(i) = vl[j] - dur<i, j>
+
+时间复杂度：O(n + e)
+
+空间复杂度：O(n)：
+1. 使用了辅助数组indegree[]；
+1. 栈T存储拓扑排序的输出顺序；
+
+```c
+//求事件（弧）最早开始时间，使用辅助数组indegree[]
+
+int vex_e[];    //最早开始时间
+int vex_l[];    //最晚开始时间
+// t存储拓扑排序的一个结果，用于记录结点之间的先后次序，便于找前驱
+// vex_e存储最早开始时间
+int _TopologicalOrder(Graph g, Stack *t) {
+    int indegree[g.vex_num];
+    FindIndegree(g, indegree);
+
+    vex_e[0..g.vex_num] = 0;    //初始化最早开始时间全为0
+
+    Stack s; init_stack(&s);
+    //将入度为0的顶点push到s内
+    int count = 0;
+    int i, j;
+    ArcNode *p;
+    while(!empty(&s)) {
+        pop(&s, i); push(&t, i); count++;   //按拓扑排序顺序输出
+        for(ArcNode *p = g.vex[i].first_arc; p; p = p->next) {
+            j = p->adjvex;  //顶点i指向顶点j
+            if(p->val + vex_e[i] > vex_e[j]) {
+                vex_e[j] = p->val + vex_e[i];   //最早开始时间取决于最晚(大)的那个
+            }
+            if(!(--indegree[j])) push(&s, j);
+        }
+    }
+
+    if(count < g.vex_num) return ERR;
+    return OK;
+}
+
+int criticalPath(ALGraph g) {
+    Stack T; init_stack(&T);
+
+    if(!_TopologicalOrder(g, &T)) return ERR;
+
+    vex_l[0..g.vex_num] = vex_e[g.vex_num - 1]; //初始化最晚开始时间全为最大值
+
+    ArcNode *p;
+    int i, j;
+    while(!empty(&T)) {
+        pop(&T, i);
+        for(p = g.vexs[i].first_arc; p; p = p->next) {
+            j = p.adjvex;
+            if(vex_l[j] - p->val < vex_l[i]) {
+                vex_l[i] = vex_l[j] - p->val;   //最晚开始时间取决于最早(小)的那个
+            }
+        }
+    }
+
+    //echo vex_e[..], vex_l[..]
+    return OK;
+}
+```
+
 
 ## 最短路径
 一类带权有向图问题
