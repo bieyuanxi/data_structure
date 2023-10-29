@@ -16,6 +16,34 @@ typedef struct {
 } Array, *Array_p;
 ```
 
+```c
+// 初始化
+void init(Array array, int dim, ...) {
+    if(dim < 1 || dim > MAX_DIMONSION) exit(1);
+
+    array->dim = dim;
+    array->bounds = (int*)malloc(sizeof(int) * dim);
+    array->constants = (int*)malloc(sizeof(int) * dim);
+
+    if(!(array->bounds && array->constants)) exit(1);
+
+    va_list ap;
+    va_start(ap, dim);
+
+    int sum = 1;
+    for (int i = 0; i < dim; ++i) {
+        array->bounds[i] = va_arg(ap, int);
+        sum *= array->bounds[i];
+    }大小;  //显然最后一级数组步长为1
+    for (int i = dim - 1; i > 0; --i) {
+        array->constants[i - 1] = array->constants[i] * array->bounds[i];
+    }
+
+    array->base = (int*)malloc(sizeof(int) * sum);
+    if(!array) exit(1);
+    va_end(ap);
+}
+```
 # 矩阵的压缩存储
 压缩存储：对多个值相同的元只分配一个存储空间；对零元不分配空间。
 
