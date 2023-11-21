@@ -375,4 +375,5 @@ void _merge_sort(ElemType *buf, ElemType *cache, int start, int end, cmp cmp) {
 
 
 ## 总结
+勘误：下图快速排序空间复杂度为O($log_2{n}$)
 ![](/asset/sort.png)
